@@ -32,16 +32,16 @@ void User_info::addNewUser(string Id, string pwd) {
 		cout << "Can not use this ID!\n";
 		return;
 	}
-	if (pwdCheck(pwd)) {
+	if (pwCheck(pwd)) {
 		cout << "Can not use this password!\n";
 	}
 	id.push_back(Id);
-	pwd.push_back(pwd);
+	pw.push_back(pwd);
 	user_num++;
 }
 
 bool User_info::idCheck(string Id) {
-	for (size_t ii = 0; ii < getUserNum(); ii++) {
+	for (size_t i = 0; i < getUserNum(); i++) {
 		if (id.at(i).length() != Id.length()) continue;
 		if (id.at(i) != Id) continue;
 		return true;
@@ -50,7 +50,7 @@ bool User_info::idCheck(string Id) {
 }
 
 bool User_info::pwCheck(string pwd) {
-	for (size_t ii = 0; ii < getUserNum(); ii++) {
+	for (size_t i = 0; i < getUserNum(); i++) {
 		if (pw.at(i).length() != pwd.length()) continue;
 		if (pw.at(i) != pwd) continue;
 		return true;
