@@ -8,17 +8,14 @@
  * - Description : login system header file
  * **************************************************************************************************/
 
-#include <iostream>
-#include <string>
-#include <vector>
-#include <map>
+
+#include "user.h"
 
 using namespace std;
 
 class User_info {
 	private:
-	vector <string> id;
-	vector <string> pw;
+	vector <user> usr_list;
 	int user_num;
 
 	public:
@@ -31,3 +28,5 @@ class User_info {
 	void addNewUser(string Id, string pwd);	// sign in new user
 
 };
+
+extern void error_handling(const char* message);

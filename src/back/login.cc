@@ -13,13 +13,11 @@
 
 User_info::User_info() {
 	user_num = 0;
-	id.clear();
-	pw.clear();
+	usr_list.clear();
 }
 
 User_info::~User_info() {
-	id.clear();
-	pw.clear();
+	usr_list.clear();
 }
 
 bool User_info::isUser(string Id, string pwd) {
@@ -28,6 +26,7 @@ bool User_info::isUser(string Id, string pwd) {
 }
 
 void User_info::addNewUser(string Id, string pwd) {
+	user new_usr;
 	if (idCheck(Id)) {
 		cout << "Can not use this ID!\n";
 		return;
@@ -35,15 +34,15 @@ void User_info::addNewUser(string Id, string pwd) {
 	if (pwCheck(pwd)) {
 		cout << "Can not use this password!\n";
 	}
-	id.push_back(Id);
-	pw.push_back(pwd);
+	new_usr = user(Id, pwd);
+	usr_list.push_back(new_usr);
 	user_num++;
 }
 
 bool User_info::idCheck(string Id) {
 	for (size_t i = 0; i < getUserNum(); i++) {
-		if (id.at(i).length() != Id.length()) continue;
-		if (id.at(i) != Id) continue;
+		if (usr_list.at(i).getID().length() != Id.length()) continue;
+		if (usr_list.at(i).getID() != Id) continue;
 		return true;
 	}
 	return false;
@@ -51,8 +50,8 @@ bool User_info::idCheck(string Id) {
 
 bool User_info::pwCheck(string pwd) {
 	for (size_t i = 0; i < getUserNum(); i++) {
-		if (pw.at(i).length() != pwd.length()) continue;
-		if (pw.at(i) != pwd) continue;
+		if (usr_list.at(i).getPW().length() != pwd.length()) continue;
+		if (usr_list.at(i).getPW() != pwd) continue;
 		return true;
 	}
 	return false;

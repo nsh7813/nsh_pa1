@@ -8,7 +8,7 @@
 # * - Description : login system source file
 # * **************************************************************************************************/
 
-TARGET = hts_client
+all: bin/hts_server bin/hts_client
 
 CC = g++
 CFLAGS = -std=c++11 -g
@@ -18,23 +18,22 @@ LFLAGS = -g
 SRCDIR = src
 OBJDIR = obj
 BINDIR = bin
-
 SOURCES  := $(wildcard $(SRCDIR)/*.cc)
 INCLUDES := $(wildcard $(SRCDIR)/*.h)
-OBJECTS  := $(SOURCES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
-rm = rm -f
+OBJECTS := $(SOURCES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
 
-$(BINDIR)/$(TARGET): $(OBJECTS)
-	@$(LINKER) $(LFLAGS) $(OBJECTS) -o $@
+rm = rm -f
 
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cc
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+$(BINDIR)/hts_server:  $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o
+	@$(LINKER) $(LFLAGS) $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o -o $@ -lpthread
+
+$(BINDIR)/hts_client: $(OBJDIR)/client.o
+	@$(LINKER) $(LFLAGS) $(OBJDIR)/client.o -o $@
+
 .PHONY: clean
 clean:
-	@$(rm) $(OBJECTS)
-
-.PHONY: remove
-remove: clean
-	@$(rm) $(BINDIR)/$(TARGET)
+	@$(rm) $(OBJDIR)/*.o $(BINDIR)/hts*
 
