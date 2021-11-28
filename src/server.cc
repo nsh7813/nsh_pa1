@@ -199,7 +199,12 @@ int handle_oper(char *buf, session_table table) {
 	int recv_opcode, send_opcode, ret = 0;
 	int uid, p_code, price, vol, bal;
 	char id[20], pw[20], AB;
+	char sbuf[100];
 	order ord, tmp;
+	user info;
+	map<int, int> cpyProducts;
+	vector<order> cpyOrders;
+	
 	recv_opcode = atoi(buf);
 	if (table.usr_code == -1 && recv_opcode != LOGIN_USER && recv_opcode != ADD_USER) {
 		return -1;
@@ -232,7 +237,7 @@ int handle_oper(char *buf, session_table table) {
 		cout << "traded: " << ret << endl;
 		if (ret < 0) break;
 		else if (ret > 0) {			// have traded data
-			while(!ordQue.empty()) {
+			while(!ordQue.empty()) {	// full traded orders
 				tmp = ords.getOrderbyID(ordQue.front());
 				uid = tmp.uid;
 				bal = users[uid].getBalance();
@@ -248,28 +253,29 @@ int handle_oper(char *buf, session_table table) {
 			}
 			uid = table.usr_code;
 			bal = users[uid].getBalance();
-			users[uid].setBalance(bal + sum_balance);	
-			if (ret != vol) {	
-				if (AB == 'A') users[uid].delProduct(p_code, vol);
-				else if (AB == 'B') users[uid].addProduct(p_code, vol);
-
-				uid = autofixed.uid;
-				bal = users[uid].getBalance();
-				ord = ords.getOrderbyID(autofixed.oid);
-				vol = ord.volume - autofixed.volume; 
-				if (AB == 'B') {
-					users[uid].delProduct(p_code, vol);
-					users[uid].setBalance(bal + vol * autofixed.price);
-				} else if (AB == 'A') {
-					users[uid].addProduct(p_code, vol);
-					users[uid].setBalance(bal - vol * autofixed.price);
+			users[uid].setBalance(bal + sum_balance);
+			cout << "before: " << users[uid].getProducts()[p_code] << " -> after: ";
+			if (AB == 'A') users[uid].delProduct(p_code, ret);
+			else if (AB == 'B') users[uid].addProduct(p_code, ret);
+			cout << users[uid].getProducts()[p_code] << endl;
+			if (autofixed.volume != 0) {
+				if (ret != vol) {
+					users[uid].addOrder(autofixed);
+				} else {
+					uid = autofixed.uid;
+					bal = users[uid].getBalance();
+					ord = ords.getOrderbyID(autofixed.oid);
+					vol = ord.volume - autofixed.volume; 
+					if (AB == 'B') {
+						users[uid].delProduct(p_code, vol);
+						users[uid].setBalance(bal + vol * autofixed.price);
+					} else if (AB == 'A') {
+						users[uid].addProduct(p_code, vol);
+						users[uid].setBalance(bal - vol * autofixed.price);
+					}
+					users[uid].delOrder(autofixed.oid);
+					users[uid].addOrder(autofixed);
 				}
-				users[uid].delOrder(autofixed.oid);
-				users[uid].addOrder(autofixed);
-			} else {
-				users[uid].addOrder(autofixed);
-				if (AB == 'A') users[uid].delProduct(p_code, vol - autofixed.volume);
-				else if (AB == 'B') users[uid].addProduct(p_code, vol - autofixed.volume);
 			}
 		} else {
 			uid = table.usr_code;
@@ -297,6 +303,29 @@ int handle_oper(char *buf, session_table table) {
 		} else { 
 			ret = -1; 
 		}
+		break;
+	case GET_INFO:
+		if (table.usr_code == -1) {
+			return (-1);
+		}
+		info = users[table.usr_code];
+		cpyProducts = users[table.usr_code].getProducts();
+		cpyOrders = info.getOrders();
+		memset(sbuf, 0, sizeof(sbuf));
+		sprintf(sbuf, "%12d%12d%12d", info.getBalance(), (int) cpyProducts.size(), (int) cpyOrders.size());
+
+		send(table.sock, sbuf, strlen(sbuf), 0);
+		for (auto it : cpyProducts) {
+			memset(sbuf, 0, sizeof(sbuf));
+			sprintf(sbuf, "%12d%12d", (int) it.first, (int) it.second);
+			cout << it.first << " " << it.second << endl;
+			send(table.sock, sbuf, strlen(sbuf), 0);
+		}
+		for (size_t i = 0; i < cpyOrders.size(); i++) {
+			memset(sbuf, 0, sizeof(sbuf));
+			send(table.sock, (char*) &cpyOrders.at(i), sizeof(order), 0);
+		}
+		//send(table.sock, (char*)&users[table.usr_code], atoi(sbuf), 0);
 		break;
 	default:
 		break;

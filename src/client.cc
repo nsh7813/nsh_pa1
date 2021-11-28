@@ -38,6 +38,7 @@ int main()
 	memset(id, 0, sizeof(id));
 	memset(pw, 0, sizeof(pw));
 
+	self = user();
 	while(!endf) {
 		copyset = readset;
 		if ((fd_num = select(fd_max + 1, &copyset, NULL, NULL, NULL)) < 0 ) {
@@ -68,8 +69,8 @@ int main()
 				} else if (ret == LOGIN_USER) {
 					cout << "Client login success." << endl;
 					sscanf(buf, "%d %d", &ret ,&usr_code);
-					self = user(string(id), string(pw));
 					self.setConnection(sock);
+					getInfo();
 					phase = 1;
 				}
 				break;
@@ -82,8 +83,6 @@ int main()
 					break;
 				}
 				getInfo();
-				send(sock, "7", 1, 0);
-				recv_len = recv(sock, buf, sizeof(buf), 0);
 				cin >> p_code >> price >> vol >> ASK_OR_BID;
 				memset(buf, 0, sizeof(buf));
 				sprintf(buf, "%d %d %d %d %c", opcode, p_code, price, vol, ASK_OR_BID);
@@ -139,6 +138,30 @@ void error_handling(const char *message)
 }
 
 void getInfo() {
-
-	return;
+	char *info;
+	char buf[100];
+	int size, recv_len;
+	int sock = self.getConnection();
+	int bal, itemsize, ordsize, p_code, vol, oid, uid, price;
+	order tmp;
+	memset(buf, 0, sizeof(buf));
+	send(sock, "7", 1, 0);
+	if ((recv_len = recv(sock, buf, 12*3, 0)) > 0) {
+		sscanf(buf, "%d%d%d", &bal, &itemsize, &ordsize);
+		cout << buf << endl;
+	}
+	self.setBalance(bal);
+	for (int i = 0; i < itemsize; i++) {
+		memset(buf, 0, sizeof(buf));
+		recv(sock, buf, 12*2, 0);
+		cout << buf << endl;
+		sscanf(buf, "%d%d", &p_code, &vol);
+		self.addProduct(p_code, vol);
+	}
+	for (int i = 0; i < ordsize; i++) {
+		memset(buf, 0, sizeof(buf));
+		recv_len = recv(sock, buf, sizeof(order), 0);
+		memcpy(&tmp, buf, recv_len);
+		self.addOrder(tmp);
+	}
 }

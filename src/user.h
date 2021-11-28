@@ -86,6 +86,13 @@ class user {
 			}
 		}
 	}
+	void refresh(user rhs) {
+		id = rhs.getID();
+		pw = rhs.getPW();
+		balance = rhs.getBalance();
+		products = rhs.getProducts();
+		orders = rhs.getOrders();
+	}
 };
 
 

@@ -28,19 +28,4 @@ class ORDER : public Dept{
 	int delOrder(int oid);
 };
 
-/*
-	int ret = calcOrder(raw_data, '~');
-	if (ret < 0) 
-		send error message
-	else if (ret > 0) {
-		dequeue & erase ordbook
-		process user information
-		send dept
-	} else {
-		process one user order list
-		send dept
-	}
-
-*/
-
 #endif

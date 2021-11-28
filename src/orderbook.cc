@@ -133,6 +133,7 @@ int ORDER::calcOrder(order raw_data, char AB) {
 						autofixed.volume -= raw_data.volume; 
 						top.volume -= raw_data.volume;
 						sum_balance += tmp.price * raw_data.volume;
+						traded += raw_data.volume;
 						raw_data.volume = 0;
 					}
 					UpdateDeptLevel(0, top, 'B');
@@ -212,9 +213,10 @@ int ORDER::calcOrder(order raw_data, char AB) {
 						sum_balance -= tmp.price * tmp.volume;
 					} else {
 						autofixed = tmp;	
-						autofixed.volume -= raw_data.volume; 
+						autofixed.volume -= raw_data.volume;
 						top.volume -= raw_data.volume;
 						sum_balance -= tmp.price * raw_data.volume;
+						traded += raw_data.volume;
 						raw_data.volume = 0;
 					}
 					UpdateDeptLevel(0, top, 'A');	
