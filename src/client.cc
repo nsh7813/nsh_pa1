@@ -144,6 +144,7 @@ void recv_dept(int p_code) {
 	int recv_len;
 	socklen_t udp_addr_size;
 	struct sockaddr_in udp_addr;
+	struct ip_mreq join_udp;
 	char buf[300];
 	char *lptr;
 	LEVEL lv;
@@ -158,7 +159,11 @@ void recv_dept(int p_code) {
 		error_handling("udp socket init failed!\n");
 	}
 	
+	if (bind(sock, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0) {
+		error_handling("bind error\n");
+	}	
 
+	setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&join_udp, sizeof(join_udp));
 	while(!endf) {
 		memset(buf, 0, sizeof(buf));
 		recv_len = recvfrom(sock, buf, 12 * 22, 0, (struct sockaddr*)&udp_addr, &udp_addr_size);

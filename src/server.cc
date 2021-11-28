@@ -64,6 +64,7 @@ int main() {
 
 void sendUDP(int product_code) {
 	int sock, snd_len;
+	int time_live = UDP_TTL;
 	struct sockaddr_in udp_addr;
 	socklen_t udp_addr_size;
 	char buf[300];
@@ -77,14 +78,16 @@ void sendUDP(int product_code) {
 
 	memset(&udp_addr, 0, sizeof(udp_addr));
 	udp_addr.sin_family = AF_INET;
-	//udp_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	udp_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	udp_addr.sin_port = htons(UDP_PORT);
-	if (bind(sock, (struct sockaddr*) &udp_addr, sizeof(udp_addr)) < 0) {
+
+/*	if (bind(sock, (struct sockaddr*) &udp_addr, sizeof(udp_addr)) < 0) {
 		cout << "Bind error\n";
 		exit(1);
 	}	
-
+*/
+	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&time_live, sizeof(time_live));
 	udp_addr_size = sizeof(udp_addr);	
 	while(!endf) {
 		unique_lock<mutex> lock(udp_mutex);
@@ -104,8 +107,6 @@ void sendUDP(int product_code) {
 		}
 		strncpy(buf, data.c_str(), data.length());
 		snd_len = sendto(sock, buf, strlen(buf), 0, (struct sockaddr*) &udp_addr, udp_addr_size);
-		cout << "send udp: " << snd_len << endl;
-		cout << buf << endl;
 	}
 /*
 	for (int i = 0; i < 100; i++) {

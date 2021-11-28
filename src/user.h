@@ -23,6 +23,7 @@
 #define SOCKET_IP "127.0.0.1"
 #define SERVER_PORT 32033		// tcp
 #define UDP_PORT 50550			// udp
+#define UDP_TTL 64
 
 typedef struct {
 	int oid;
