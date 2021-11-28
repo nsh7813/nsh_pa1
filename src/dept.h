@@ -48,4 +48,5 @@ class Dept {
 };
 
 Dept copyDept5(Dept dept);		// copy dept 5 level
+void print5level(Dept original);
 #endif

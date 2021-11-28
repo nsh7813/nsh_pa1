@@ -1,13 +1,19 @@
 #include "client.h"
+#include <thread>
 
 using namespace std;
+using std::thread;
 
+bool endf = false;
 int order_balance;
 int phase = 0;
 user self;
+Dept dept;
 
 void getInfo();
 void error_handling(const char *message);
+void recv_dept(int p_code);
+
 
 int main()
 {
@@ -18,7 +24,6 @@ int main()
 	char buf[MAX_LEN + 1];
 	char id[20], pw[20];
 	char ASK_OR_BID;
-	bool endf = false;
 	fd_set readset, copyset;
 
 	sock=socket(AF_INET, SOCK_STREAM, 0);
@@ -37,6 +42,10 @@ int main()
 	usr_code = -1;
 	memset(id, 0, sizeof(id));
 	memset(pw, 0, sizeof(pw));
+
+	dept = Dept(100, 2222);
+	thread udp_thread(recv_dept, 2222);
+	udp_thread.detach();
 
 	self = user();
 	while(!endf) {
@@ -130,6 +139,53 @@ int main()
 	return 0; 	
 }
 
+void recv_dept(int p_code) {
+	int sock;
+	int recv_len;
+	socklen_t udp_addr_size;
+	struct sockaddr_in udp_addr;
+	char buf[300];
+	char *lptr;
+	LEVEL lv;
+
+	memset(&udp_addr, 0, sizeof(udp_addr));
+	udp_addr.sin_family = AF_INET;
+	udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	udp_addr.sin_port = htons(UDP_PORT);
+	udp_addr_size = sizeof(udp_addr);
+
+	if ((sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+		error_handling("udp socket init failed!\n");
+	}
+	
+
+	while(!endf) {
+		memset(buf, 0, sizeof(buf));
+		recv_len = recvfrom(sock, buf, 12 * 22, 0, (struct sockaddr*)&udp_addr, &udp_addr_size);
+		cout << "udp recv: " << recv_len << endl;
+		if (recv_len > 0) {
+			lptr = buf;
+			//if more than one product
+			//dept.setCode(atoi(lptr));	lptr += 12;
+			//dept.setInitPrice(atoi(lptr));	lptr += 12;
+			lptr += 24;
+			for (int i = 0; i < 5; i++) {
+				lv.price = atoi(lptr);
+				lptr += 12;
+				lv.volume = atoi(lptr);
+				lptr += 12;
+				dept.UpdateDeptLevel(i, lv, 'A');
+				lv.price = atoi(lptr);
+				lptr += 12;
+				lv.volume = atoi(lptr);
+				lptr += 12;
+				dept.UpdateDeptLevel(i, lv, 'B');
+			}
+			print5level(dept);
+		}
+	}
+	close(sock);
+}
 
 void error_handling(const char *message)
 {

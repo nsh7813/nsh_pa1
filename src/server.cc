@@ -13,6 +13,8 @@
 #include "orderbook.h"
 #include <unistd.h>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -23,7 +25,6 @@
 
 using std::thread;
 
-#define UDP_PORT 50550	
 #define BUF_SIZE 100
 
 typedef struct {
@@ -31,8 +32,10 @@ typedef struct {
 	int usr_code;
 } session_table;
 
-void printDept();
-void sendUDP(Dept dpt);
+mutex udp_mutex;
+condition_variable udp_cond;
+
+void sendUDP(int product_code);
 void handle_client();
 int handle_oper(char *buf, session_table table);
 void batch();
@@ -50,8 +53,8 @@ int main() {
 	// get Users information & order batch init	
 	batch();
 
-//	thread thread1(sendUDP, copyDept5(ords));
-//	thread1.detach();
+	thread thread1(sendUDP, ords.getCode());
+	thread1.detach();
 	
 	handle_client();
 	
@@ -59,10 +62,14 @@ int main() {
 	return 0;
 }
 
-void sendUDP(Dept dpt) {
+void sendUDP(int product_code) {
 	int sock, snd_len;
 	struct sockaddr_in udp_addr;
-	sock = socket(PF_INET, SOCK_DGRAM, 0);
+	socklen_t udp_addr_size;
+	char buf[300];
+	string data;
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	Dept dept;
 	if (sock < -1) {
 		cout << "Socket create error\n";
 		exit(1);
@@ -70,20 +77,45 @@ void sendUDP(Dept dpt) {
 
 	memset(&udp_addr, 0, sizeof(udp_addr));
 	udp_addr.sin_family = AF_INET;
-	udp_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//udp_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	udp_addr.sin_port = htons(UDP_PORT);
-	
 	if (bind(sock, (struct sockaddr*) &udp_addr, sizeof(udp_addr)) < 0) {
 		cout << "Bind error\n";
 		exit(1);
 	}	
 
+	udp_addr_size = sizeof(udp_addr);	
+	while(!endf) {
+		unique_lock<mutex> lock(udp_mutex);
+		udp_cond.wait(lock);
+		dept = copyDept5((Dept) ords);
+		memset(buf, 0, sizeof(buf));
+		data.clear();
+		sprintf(buf, "%12d", product_code);
+		data += string(buf);
+		sprintf(buf, "%12d", dept.getInitPrice());
+		data += string(buf);
+		for (int i = 0; i < 5; i++) {
+			sprintf(buf, "%12d%12d", dept.getLevel(i, 'A').price, dept.getLevel(i, 'A').volume);
+			data += string(buf);
+			sprintf(buf, "%12d%12d", dept.getLevel(i, 'B').price, dept.getLevel(i, 'B').volume);
+			data += string(buf);
+		}
+		strncpy(buf, data.c_str(), data.length());
+		snd_len = sendto(sock, buf, strlen(buf), 0, (struct sockaddr*) &udp_addr, udp_addr_size);
+		cout << "send udp: " << snd_len << endl;
+		cout << buf << endl;
+	}
+/*
 	for (int i = 0; i < 100; i++) {
 		sleep(5);
 		//cout << dept.getInitPrice() << endl;
 		snd_len = sendto(sock, (void*) &dpt, sizeof(dpt), 0, (struct sockaddr*) &udp_addr, sizeof(udp_addr));
 		cout << "send: " << snd_len << endl;
 	}
+*/
+	cout << "close thread" << endl;
 	close(sock);
 }
 
@@ -117,7 +149,6 @@ void handle_client() {			// port : 32032
 	new_table.usr_code = -1;
 	s_table.resize(fd_max + 1);
 	for (size_t ii = 0; ii < fd_max + 1; ii++) s_table.push_back(new_table);
-	cout << "initialize complete!" << endl;
         while(!endf) {
 		copyset = readset;
 		if ((fd_num = select(fd_max + 1, &copyset, NULL, NULL, NULL)) < 0) {
@@ -147,6 +178,7 @@ void handle_client() {			// port : 32032
 					if ((buf_len = read(i, buf, sizeof(buf))) > 0) {
 						if (strncmp(buf, "exit", 4) == 0) {
 							endf = true;
+							udp_cond.notify_one();
 							break;
 						}
 					}
@@ -209,7 +241,7 @@ int handle_oper(char *buf, session_table table) {
 	if (table.usr_code == -1 && recv_opcode != LOGIN_USER && recv_opcode != ADD_USER) {
 		return -1;
 	}
-	//sscanf(buf, "%d %s %s", &recv_opcode, &
+
 	switch(recv_opcode) {
 	case LOGIN_USER:		// id/pw , return success or not
 		memset(id, 0, sizeof(id));	
@@ -219,6 +251,7 @@ int handle_oper(char *buf, session_table table) {
 		if (uid >= 0) {
 			users.at(uid).setConnection(table.sock);
 			ret = uid;
+			udp_cond.notify_one();
 		} else { 
 			ret = -1; 
 		}
@@ -234,7 +267,6 @@ int handle_oper(char *buf, session_table table) {
 		ord.price = price;
 		ord.volume = vol;
 		ret = ords.calcOrder(ord, AB);
-		cout << "traded: " << ret << endl;
 		if (ret < 0) break;
 		else if (ret > 0) {			// have traded data
 			while(!ordQue.empty()) {	// full traded orders
@@ -283,7 +315,8 @@ int handle_oper(char *buf, session_table table) {
 			users[uid].addOrder(ord);
 		} 
 		// send dept
-		printDept();
+		udp_cond.notify_one();
+		cout << "traded: " << ret << endl;
 		break;
 	case CANCEL_ORDER:		// oid , return success or not 
 		break;
@@ -341,13 +374,6 @@ void batch() {
 	user new_user = user(test, test);
 	users.push_back(new_user);
 	users[0].addProduct(2222, 10000);
-
-/*
-	for (int i = 0; i < 20; i++) {
-		ords.UpdateDeptLevel(i, 100 + i, 1000, 'A');
-		ords.UpdateDeptLevel(i, 99 - i, 1000, 'B');
-	}
-*/
 	return;
 }
 
@@ -356,7 +382,7 @@ void error_handling(const char *message)
 	std::cout << message;
 	exit(1);
 }
-
+/*
 void printDept() {
 	Dept dept = copyDept5((Dept) ords);
 	printf("\tavol\tprice\n");
@@ -368,3 +394,4 @@ void printDept() {
 	}
 	printf("\t\t\tprice\tbvol\n");
 }
+*/

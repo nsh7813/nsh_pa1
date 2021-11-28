@@ -20,7 +20,9 @@
 #define CREATE_NEW      2
 #define ERROR_MSG       3
 
+#define SOCKET_IP "127.0.0.1"
 #define SERVER_PORT 32033		// tcp
+#define UDP_PORT 50550			// udp
 
 typedef struct {
 	int oid;

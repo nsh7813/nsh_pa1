@@ -30,8 +30,8 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cc
 $(BINDIR)/hts_server:  $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o
 	@$(LINKER) $(LFLAGS) $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o -o $@ -lpthread
 
-$(BINDIR)/hts_client: $(OBJDIR)/client.o
-	@$(LINKER) $(LFLAGS) $(OBJDIR)/client.o -o $@
+$(BINDIR)/hts_client: $(OBJDIR)/client.o $(OBJDIR)/dept.o
+	@$(LINKER) $(LFLAGS) $(OBJDIR)/client.o $(OBJDIR)/dept.o -o $@ -lpthread
 
 .PHONY: clean
 clean:

@@ -105,3 +105,15 @@ Dept copyDept5(Dept dept) {
 	}
 	return temp;
 }
+
+void print5level(Dept original) {
+	Dept dept = copyDept5(original);
+	printf("avol\tprice\n");
+	for (int i = 4; i >= 0; i--) {
+		printf("%d\t%d\n", dept.getLevel(i, 'A').volume, dept.getLevel(i, 'A').price);
+	}
+	for (int i = 0; i < 5; i++) {
+		printf("\t\t%d\t%d\n", dept.getLevel(i, 'B').price, dept.getLevel(i, 'B').volume);
+	}
+	printf("\t\tprice\tbvol\n");
+}
