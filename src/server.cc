@@ -35,6 +35,7 @@ typedef struct {
 mutex udp_mutex;
 condition_variable udp_cond;
 
+//void sendUDP(int product_code, char *local);
 void sendUDP(int product_code);
 void handle_client();
 int handle_oper(char *buf, session_table table);
@@ -51,8 +52,17 @@ ORDER ords;
 
 int main() {
 	// get Users information & order batch init	
+/*	multicast with public ip
+	if (argc < 2) {
+		cout << "Usage: hts_server local_ip" << endl;
+		exit(1);
+	}
 	batch();
-
+	char local_ip[20];
+	strncpy(local_ip, argv[1], strlen(argv[1]));
+	thread thread1(sendUDP, ords.getCode(), local_ip);
+*/
+	batch();
 	thread thread1(sendUDP, ords.getCode());
 	thread1.detach();
 	
@@ -62,14 +72,16 @@ int main() {
 	return 0;
 }
 
+//void sendUDP(int product_code, char* local) {
 void sendUDP(int product_code) {
 	int sock, snd_len;
 	int time_live = UDP_TTL;
 	struct sockaddr_in udp_addr;
+	//struct in_addr local_addr;
 	socklen_t udp_addr_size;
 	char buf[300];
 	string data;
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	Dept dept;
 	if (sock < -1) {
 		cout << "Socket create error\n";
@@ -78,9 +90,11 @@ void sendUDP(int product_code) {
 
 	memset(&udp_addr, 0, sizeof(udp_addr));
 	udp_addr.sin_family = AF_INET;
+	//udp_addr.sin_addr.s_addr = inet_addr(SOCKET_IP);
 	udp_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	//udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	udp_addr.sin_port = htons(UDP_PORT);
+	//local_addr.s_addr = inet_addr(local);
 
 /*	if (bind(sock, (struct sockaddr*) &udp_addr, sizeof(udp_addr)) < 0) {
 		cout << "Bind error\n";
@@ -88,6 +102,7 @@ void sendUDP(int product_code) {
 	}	
 */
 	setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&time_live, sizeof(time_live));
+	//setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, local, strlen(local));
 	udp_addr_size = sizeof(udp_addr);	
 	while(!endf) {
 		unique_lock<mutex> lock(udp_mutex);
@@ -352,7 +367,6 @@ int handle_oper(char *buf, session_table table) {
 		for (auto it : cpyProducts) {
 			memset(sbuf, 0, sizeof(sbuf));
 			sprintf(sbuf, "%12d%12d", (int) it.first, (int) it.second);
-			cout << it.first << " " << it.second << endl;
 			send(table.sock, sbuf, strlen(sbuf), 0);
 		}
 		for (size_t i = 0; i < cpyOrders.size(); i++) {

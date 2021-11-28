@@ -159,10 +159,7 @@ void recv_dept(int p_code) {
 		error_handling("udp socket init failed!\n");
 	}
 	
-	if (bind(sock, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0) {
-		error_handling("bind error\n");
-	}	
-
+	bind(sock, (struct sockaddr*)&udp_addr, sizeof(udp_addr));
 	setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&join_udp, sizeof(join_udp));
 	while(!endf) {
 		memset(buf, 0, sizeof(buf));
@@ -215,7 +212,6 @@ void getInfo() {
 	for (int i = 0; i < itemsize; i++) {
 		memset(buf, 0, sizeof(buf));
 		recv(sock, buf, 12*2, 0);
-		cout << buf << endl;
 		sscanf(buf, "%d%d", &p_code, &vol);
 		self.addProduct(p_code, vol);
 	}
