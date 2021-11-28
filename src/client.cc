@@ -2,12 +2,17 @@
 
 using namespace std;
 
+int order_balance;
+int phase = 0;
+user self;
+
+void getInfo();
 void error_handling(const char *message);
 
 int main()
 {
-        int sock, ret;
-	int fd_max, fd_num, opcode, usr_code;
+        int sock, ret, recv_len;
+	int fd_max, fd_num, opcode, usr_code = -1;
 	int p_code, price, vol;
         struct sockaddr_in serv_addr;
 	char buf[MAX_LEN + 1];
@@ -41,42 +46,65 @@ int main()
 		if (fd_num == 0) continue;
 		if (FD_ISSET(STDIN_FILENO, &copyset)) {
 			memset(buf, 0, sizeof(buf));
-			scanf("%d", &opcode);
+			cin >> opcode;
 			switch (opcode) {
 			case LOGIN_USER:
 			case ADD_USER:
+				if (phase != 0) {
+					cout << "Error: Already logged in!" << endl;
+					break;
+				}
 				cin >> id >> pw;
 				sprintf(buf, "%d %s %s", opcode, id, pw);
 				send(sock, buf, strlen(buf), 0);
-				recv(sock, buf, sizeof(buf), 0);
+				recv_len = recv(sock, buf, sizeof(buf), 0);
 				ret = atoi(buf);
+				if (recv_len == 0) {
+					cout << "Error: Server disconnected." << endl;
+					exit(1);
+				}
 				if (ret < 0) {
 					cout << "Error: invalid command!" << endl;	
 				} else if (ret == LOGIN_USER) {
 					cout << "Client login success." << endl;
 					sscanf(buf, "%d %d", &ret ,&usr_code);
+					self = user(string(id), string(pw));
+					self.setConnection(sock);
+					phase = 1;
 				}
 				break;
 			case LOGOUT_USER:
 				endf = true;	
 				break;
 			case CLIENT_ORDER:
+				if (phase == 0) {
+					cout << "Error: invalid command!" << endl;
+					break;
+				}
+				getInfo();
+				send(sock, "7", 1, 0);
+				recv_len = recv(sock, buf, sizeof(buf), 0);
 				cin >> p_code >> price >> vol >> ASK_OR_BID;
+				memset(buf, 0, sizeof(buf));
 				sprintf(buf, "%d %d %d %d %c", opcode, p_code, price, vol, ASK_OR_BID);
 				send(sock, buf, strlen(buf), 0);
-				recv(sock, buf, sizeof(buf), 0);
+				recv_len = recv(sock, buf, sizeof(buf), 0);
 				ret = atoi(buf);
+				if (recv_len == 0) {
+					cout << "Error: Server disconnected." << endl;
+					exit(1);
+				}
 				if (ret < 0) {
 					cout << "Error: invalid command!" << endl;	
-				} else if {
+				} else {
 					cout << "order success" << endl;
 				}			
 				break;
 			case CANCEL_ORDER:
 			case FIX_ORDER:
-				
 				break;
 			default:
+				endf = true;
 				break;
 			}
 		} else if (FD_ISSET(sock, &copyset)){
@@ -106,8 +134,11 @@ int main()
 
 void error_handling(const char *message)
 {
-	std::cout << message;
+	cout << message;
 	exit(1);
 }
 
+void getInfo() {
 
+	return;
+}

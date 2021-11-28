@@ -13,12 +13,14 @@
 #define CANCEL_ORDER    4
 #define FIX_ORDER       5
 #define ADD_USER        6
+#define GET_INFO        7
 
 /* server opcode */
 #define LOGIN_SUCCESS   1
 #define CREATE_NEW      2
 #define ERROR_MSG       3
-#define GET_INFO        4
+
+#define SERVER_PORT 32033		// tcp
 
 typedef struct {
 	int oid;

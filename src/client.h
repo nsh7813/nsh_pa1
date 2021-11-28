@@ -8,6 +8,5 @@
 #include <netdb.h>
 #include <cstring>
 
-#define SERVER_PORT 32032
-#define MAX_LEN 200
+#define MAX_LEN 1000
 

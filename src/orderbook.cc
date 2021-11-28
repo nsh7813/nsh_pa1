@@ -21,6 +21,8 @@ ORDER::~ORDER() {
 ORDER::ORDER(int _initP, int _p_code) : Dept(_initP, _p_code) {
 	last_oid = 0;
 	ordbook.clear();
+	Abook.resize(10);
+	Bbook.resize(10);
 }
 
 map<int, order> ORDER::getOrderbook() {
@@ -60,25 +62,29 @@ int ORDER::calcOrder(order raw_data, char AB) {
 		top = getLevel(0, 'B');
 		if (raw_data.price > top.price) {	// to orderbook
 			for (lv = 0; lv < getLevelAll(AB).size(); lv++) {
-				if (raw_data.price == getLevelAll(AB).at(lv).price) {
+				if (getLevelAll(AB).at(lv).price == 0) {
+					tlv.volume = raw_data.volume;
+					tlv.price = raw_data.price;
+					addLastOID();
+					Abook.at(lv).push_back(getLastOID());
+					UpdateDeptLevel(lv, tlv, AB);
+				}
+				else if (raw_data.price == getLevelAll(AB).at(lv).price) {
 					tlv = getLevel(lv, AB);
 					tlv.volume += raw_data.volume;
 					addLastOID();
-					raw_data.oid = getLastOID();
-					Abook[lv].push_back(getLastOID());
-					ordbook.insert({getLastOID(), raw_data});
+					Abook.at(lv).push_back(getLastOID());
 					UpdateDeptLevel(lv, tlv, AB);
-					break;
 				} else if(raw_data.price < getLevelAll(AB).at(lv).price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
-					addNewLevel(lv, tlv, AB);
 					addLastOID();
+					addNewLevel(lv, tlv, AB);
 					Abook.insert(Abook.begin() + lv, vector<int> (1, getLastOID()));
-					raw_data.oid = getLastOID();
-					ordbook.insert({getLastOID(), raw_data});
-					break;
-				}
+				} else continue;
+				raw_data.oid = getLastOID();
+				ordbook.insert({getLastOID(), raw_data});
+				break;
 			}
 			if (lv == getLevelAll(AB).size()) {
 				tlv.price = raw_data.price;
@@ -129,33 +135,38 @@ int ORDER::calcOrder(order raw_data, char AB) {
 						sum_balance += tmp.price * raw_data.volume;
 						raw_data.volume = 0;
 					}
-					UpdateDeptLevel(0, top, 'B');	
+					UpdateDeptLevel(0, top, 'B');
 				}
 			}
 		}	
 	} else if (AB == 'B'){		// Buy
 		top = getLevel(0, 'A');
+		if (top.price == 0) top.price = 0x7FFFFFF;
 		if (raw_data.price < top.price) {	// to orderbook
 			for (lv = 0; lv < getLevelAll(AB).size(); lv++) {
-				if (raw_data.price == getLevelAll(AB).at(lv).price) {
+				if (getLevelAll(AB).at(lv).price == 0) {
+					tlv.volume = raw_data.volume;
+					tlv.price = raw_data.price;
+					addLastOID();
+					Bbook.at(lv).push_back(getLastOID());
+					UpdateDeptLevel(lv, tlv, AB);	
+				}
+				else if (raw_data.price == getLevelAll(AB).at(lv).price) {
 					tlv = getLevel(lv, AB);
 					tlv.volume += raw_data.volume;
 					addLastOID();
 					Bbook[lv].push_back(getLastOID());
-					raw_data.oid = getLastOID();
-					ordbook.insert({getLastOID(), raw_data});
 					UpdateDeptLevel(lv, tlv, AB);
-					break;
 				} else if(raw_data.price > getLevelAll(AB).at(lv).price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
 					addNewLevel(lv, tlv, AB);
 					addLastOID();
 					Bbook.insert(Bbook.begin() + lv, vector<int> (1, getLastOID()));
-					raw_data.oid = getLastOID();
-					ordbook.insert({getLastOID(), raw_data});
-					break;
-				}
+				} else continue;
+				raw_data.oid = getLastOID();
+				ordbook.insert({getLastOID(), raw_data});
+				break;
 			}
 			if (lv == getLevelAll(AB).size()) {
 				tlv.price = raw_data.price;

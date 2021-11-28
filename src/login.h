@@ -29,7 +29,7 @@ int isUser(vector<user> usrs, string Id, string pwd) {	// check id/pw is valid
 	for (size_t i = 0; i < usrs.size(); i++) {
 		if (idCheck(usrs.at(i), Id) && pwCheck(usrs.at(i), pwd)) return (int) i;
 	}
-	return 0;
+	return -1;
 }
 
 extern void error_handling(const char* message);

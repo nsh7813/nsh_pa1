@@ -23,7 +23,6 @@
 
 using std::thread;
 
-#define SERVER_PORT 32032		// tcp
 #define UDP_PORT 50550	
 #define BUF_SIZE 100
 
@@ -32,6 +31,7 @@ typedef struct {
 	int usr_code;
 } session_table;
 
+void printDept();
 void sendUDP(Dept dpt);
 void handle_client();
 int handle_oper(char *buf, session_table table);
@@ -50,8 +50,8 @@ int main() {
 	// get Users information & order batch init	
 	batch();
 
-	thread thread1(sendUDP, copyDept5(ords));
-	thread1.detach();
+//	thread thread1(sendUDP, copyDept5(ords));
+//	thread1.detach();
 	
 	handle_client();
 	
@@ -117,7 +117,7 @@ void handle_client() {			// port : 32032
 	new_table.usr_code = -1;
 	s_table.resize(fd_max + 1);
 	for (size_t ii = 0; ii < fd_max + 1; ii++) s_table.push_back(new_table);
-
+	cout << "initialize complete!" << endl;
         while(!endf) {
 		copyset = readset;
 		if ((fd_num = select(fd_max + 1, &copyset, NULL, NULL, NULL)) < 0) {
@@ -137,11 +137,11 @@ void handle_client() {			// port : 32032
 					new_table.sock = clnt_sock;
 					new_table.usr_code = -1;
 					if (fd_max < clnt_sock) {
+						fd_max = clnt_sock;
 						s_table.resize(fd_max + 1);
 						s_table.at(clnt_sock) = new_table;
-						fd_max = clnt_sock;
 					}
-					s_table.at(i) = new_table;
+					s_table.at(clnt_sock) = new_table;
 				} else if (i == STDIN_FILENO) { 		// close server;
 					memset(buf, 0, sizeof(buf));
 					if ((buf_len = read(i, buf, sizeof(buf))) > 0) {
@@ -179,8 +179,8 @@ void handle_client() {			// port : 32032
 						// close connection 
 						close(i);
 						FD_CLR(i, &readset);
-						users.at(s_table.at(i).usr_code).setConnection(-1);
-						s_table.erase(s_table.begin() + i);
+						//users.at(s_table.at(i).usr_code).setConnection(-1);
+						//s_table.erase(s_table.begin() + i);
 					}
 				}
 			}
@@ -211,7 +211,7 @@ int handle_oper(char *buf, session_table table) {
 		memset(pw, 0, sizeof(pw));	
 		sscanf(buf, "%d %s %s", &recv_opcode, id, pw);
 		uid = isUser(users, string(id), string(pw));
-		if (uid > 0) {
+		if (uid >= 0) {
 			users.at(uid).setConnection(table.sock);
 			ret = uid;
 		} else { 
@@ -229,6 +229,7 @@ int handle_oper(char *buf, session_table table) {
 		ord.price = price;
 		ord.volume = vol;
 		ret = ords.calcOrder(ord, AB);
+		cout << "traded: " << ret << endl;
 		if (ret < 0) break;
 		else if (ret > 0) {			// have traded data
 			while(!ordQue.empty()) {
@@ -248,7 +249,7 @@ int handle_oper(char *buf, session_table table) {
 			uid = table.usr_code;
 			bal = users[uid].getBalance();
 			users[uid].setBalance(bal + sum_balance);	
-			if (autofixed.uid != table.usr_code) {	
+			if (ret != vol) {	
 				if (AB == 'A') users[uid].delProduct(p_code, vol);
 				else if (AB == 'B') users[uid].addProduct(p_code, vol);
 
@@ -276,6 +277,7 @@ int handle_oper(char *buf, session_table table) {
 			users[uid].addOrder(ord);
 		} 
 		// send dept
+		printDept();
 		break;
 	case CANCEL_ORDER:		// oid , return success or not 
 		break;
@@ -290,7 +292,7 @@ int handle_oper(char *buf, session_table table) {
 				return -1;
 			}
 		}
-		if (uid == 0) {
+		if (table.usr_code == -1) {
 			users.push_back(user(string(id), string(pw)));
 		} else { 
 			ret = -1; 
@@ -306,7 +308,7 @@ int handle_oper(char *buf, session_table table) {
 void batch() {
 	ords = ORDER(100, 2222);
 	users.clear();
-	string test = "admin";
+	string test = string("admin");
 	user new_user = user(test, test);
 	users.push_back(new_user);
 	users[0].addProduct(2222, 10000);
@@ -326,3 +328,14 @@ void error_handling(const char *message)
 	exit(1);
 }
 
+void printDept() {
+	Dept dept = copyDept5((Dept) ords);
+	printf("\tavol\tprice\n");
+	for (int i = 4; i >= 0; i--) {
+		printf("%d\t%d\t%d\n", i,  ords.getLevel(i, 'A').volume, ords.getLevel(i, 'A').price);
+	}
+	for (int i = 0; i < 5; i++) {
+		printf("\t\t\t%d\t%d\t%d\n", ords.getLevel(i, 'B').price, ords.getLevel(i, 'B').volume, i);
+	}
+	printf("\t\t\tprice\tbvol\n");
+}
