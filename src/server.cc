@@ -40,6 +40,7 @@ void sendUDP(int product_code);
 void handle_client();
 int handle_oper(char *buf, session_table table);
 void batch();
+void saveInfo();
 void error_handling(const char *message);
 
 bool endf = false;
@@ -115,9 +116,9 @@ void sendUDP(int product_code) {
 		sprintf(buf, "%12d", dept.getInitPrice());
 		data += string(buf);
 		for (int i = 0; i < 5; i++) {
-			sprintf(buf, "%12d%12d", dept.getLevel(i, 'A').price, dept.getLevel(i, 'A').volume);
+			sprintf(buf, "%12d%12d", dept.getLevel(i, ASK).price, dept.getLevel(i, ASK).volume);
 			data += string(buf);
-			sprintf(buf, "%12d%12d", dept.getLevel(i, 'B').price, dept.getLevel(i, 'B').volume);
+			sprintf(buf, "%12d%12d", dept.getLevel(i, BID).price, dept.getLevel(i, BID).volume);
 			data += string(buf);
 		}
 		strncpy(buf, data.c_str(), data.length());
@@ -195,6 +196,7 @@ void handle_client() {			// port : 32032
 						if (strncmp(buf, "exit", 4) == 0) {
 							endf = true;
 							udp_cond.notify_one();
+							saveInfo();
 							break;
 						}
 					}
@@ -280,38 +282,34 @@ int handle_oper(char *buf, session_table table) {
 		break;
 	case CLIENT_ORDER:		// product code / price / volume , return success or not	
 		sscanf(buf, "%d %d %d %d %c", &recv_opcode, &p_code, &price, &vol, &AB);
-		if (AB == 'B' && users[table.usr_code].getBalance() < price * vol) return (-1);
-		ord.oid = 0;
-		ord.uid = table.usr_code;
-		ord.p_code = p_code;
-		ord.price = price;
-		ord.volume = vol;
-		ord.ab = AB;
+		ord.oid = 0;	ord.uid = table.usr_code;	ord.p_code = p_code;
+		ord.price = price;	ord.volume = vol;	ord.ab = AB;
+		if (!users[table.usr_code].canOrder(ord)) return (-1);
 		ret = ords.calcOrder(ord);
-		if (ret < 0) break;
+		if (ret < 0) break;			// invalid order
 		else if (ret > 0) {			// have traded data
 			while(!ordQue.empty()) {	// full traded orders
 				tmp = ords.getOrderbyID(ordQue.front());
 				uid = tmp.uid;
 				bal = users[uid].getBalance();
-				if (AB == 'A') {
+				if (AB == BID) {
 					users[uid].delProduct(p_code, tmp.volume);
 					users[uid].setBalance(bal + tmp.volume * tmp.price);
-				} else if (AB == 'B') {
+				} else if (AB == ASK) {
 					users[uid].addProduct(p_code, tmp.volume);
 					users[uid].setBalance(bal - tmp.volume * tmp.price);
 				}
+				ords.setLastPrice(tmp.price);
+				users[uid].delOrder(ordQue.front());
 				ords.delOrder(ordQue.front());
 				ordQue.pop();	
 			}
 			uid = table.usr_code;
 			bal = users[uid].getBalance();
 			users[uid].setBalance(bal + sum_balance);
-			cout << "before: " << users[uid].getProducts()[p_code] << " -> after: ";
-			if (AB == 'A') users[uid].delProduct(p_code, ret);
-			else if (AB == 'B') users[uid].addProduct(p_code, ret);
-			cout << users[uid].getProducts()[p_code] << endl;
-			if (autofixed.volume != 0) {
+			if (AB == ASK) users[uid].delProduct(p_code, ret);
+			else if (AB == BID) users[uid].addProduct(p_code, ret);
+			if (autofixed.volume != 0) {	// process remained order
 				if (ret != vol) {
 					users[uid].addOrder(autofixed);
 				} else {
@@ -319,10 +317,10 @@ int handle_oper(char *buf, session_table table) {
 					bal = users[uid].getBalance();
 					ord = ords.getOrderbyID(autofixed.oid);
 					vol = ord.volume - autofixed.volume; 
-					if (AB == 'B') {
+					if (AB == BID) {
 						users[uid].delProduct(p_code, vol);
 						users[uid].setBalance(bal + vol * autofixed.price);
-					} else if (AB == 'A') {
+					} else if (AB == ASK) {
 						users[uid].addProduct(p_code, vol);
 						users[uid].setBalance(bal - vol * autofixed.price);
 					}
@@ -388,13 +386,56 @@ int handle_oper(char *buf, session_table table) {
 }
 
 void batch() {
-	ords = ORDERBOOK(100, 2222);
+	int n, m, p_code, price, vol;
+	FILE *in;
+	char buf1[20], buf2[20];
+
+	in = fopen("./src/data/dept.txt", "r");
+	fscanf(in, "%d %d", &price, &p_code);
+	fclose(in);
+
+	ords = ORDERBOOK(price, p_code);
 	users.clear();
-	string test = string("admin");
-	user new_user = user(test, test);
-	users.push_back(new_user);
-	users[0].addProduct(2222, 10000);
+	
+	in = fopen("./src/data/users.txt", "r");	
+	fscanf(in, "%d", &n);
+	
+	for (int i = 0; i < n; i++) {
+		memset(buf1, 0, sizeof(buf1));
+		memset(buf2, 0, sizeof(buf2));
+		fscanf(in, "%s %s", buf1, buf2);
+		user new_user = user(string(buf1), string(buf2));
+		users.push_back(new_user);
+		fscanf(in, "%d", &m);
+		users[i].setBalance(m);
+		fscanf(in, "%d", &m);
+		for (int j = 0; j < m; j++) {
+			fscanf(in, "%d %d", &p_code, &vol);
+			users[i].addProduct(p_code, vol);
+		}
+	}
+	fclose(in);
 	return;
+}
+
+void saveInfo() {
+	FILE *out;
+	
+	out = fopen("./src/data/dept.txt", "w");
+	fprintf(out, "%d %d", ords.getLastPrice(), ords.getCode());
+	fclose(out);
+	
+	out = fopen("./src/data/users.txt", "w");
+	fprintf(out, "%d\n", (int) users.size());
+	for (size_t i = 0; i < users.size(); i++) {
+		fprintf(out, "%s %s\n", users[i].getID().c_str(), users[i].getPW().c_str());
+		fprintf(out, "%d\n", users[i].getBalance());
+		fprintf(out, "%d\n", (int) users[i].getProducts().size());
+		for (auto it : users[i].getProducts()) {
+			fprintf(out, "%d %d\n", (int) it.first, (int) it.second);
+		}
+	}
+	fclose(out);
 }
 
 void error_handling(const char *message)
@@ -402,16 +443,4 @@ void error_handling(const char *message)
 	std::cout << message;
 	exit(1);
 }
-/*
-void printDept() {
-	Dept dept = copyDept5((Dept) ords);
-	printf("\tavol\tprice\n");
-	for (int i = 4; i >= 0; i--) {
-		printf("%d\t%d\t%d\n", i,  ords.getLevel(i, 'A').volume, ords.getLevel(i, 'A').price);
-	}
-	for (int i = 0; i < 5; i++) {
-		printf("\t\t\t%d\t%d\t%d\n", ords.getLevel(i, 'B').price, ords.getLevel(i, 'B').volume, i);
-	}
-	printf("\t\t\tprice\tbvol\n");
-}
-*/
+

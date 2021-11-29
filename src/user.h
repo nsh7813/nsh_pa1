@@ -29,6 +29,9 @@
 #define SERVER_PORT 32033		// tcp
 #define UDP_PORT 50550			// udp
 #define UDP_TTL 64
+#define ASK	'A'
+#define BID	'B'
+
 
 typedef struct {
 	int oid;
@@ -73,7 +76,8 @@ class user {
 		if (products[p_code] == 0) products.erase(p_code);
 	}
 	void modifyProduct(int p_code, int volume) {		// modify produdct volume
-		products[p_code] = volume;
+		if (products.count(p_code)) products[p_code] = volume;
+		else products.insert({p_code, volume});
 	}
 	void addOrder(int oid, int p_code, int price, int vol) { // add order
 		order o;
@@ -95,6 +99,9 @@ class user {
 			}
 		}
 	}
+	void orderClear() {					// clear order
+		orders.clear();
+	}
 	void refresh(user rhs) {				// refresh user information
 		id = rhs.getID();
 		pw = rhs.getPW();
@@ -105,15 +112,15 @@ class user {
 	int getAvail() {					// get Available balance to order
 		int bal = getBalance();
 		for (size_t i = 0; i < orders.size(); i++) {
-			if (orders[i].ab == 'A') continue;
+			if (orders[i].ab == ASK) continue;
 			bal -= orders[i].price * orders[i].volume;
 		}
 		return bal;
 	}
 	bool canOrder(order ord) {				// check order possible
-		if (ord.ab == 'A') {
+		if (ord.ab == ASK) {
 			if (products[ord.p_code] < ord.volume) return false;
-		} else if (ord.ab == 'B') {
+		} else if (ord.ab == BID) {
 			if (getAvail() < ord.volume * ord.price) return false;
 		} else return false;
 		return true;
@@ -126,7 +133,7 @@ class user {
 		}
 		std::cout << "-Current orders\n" << "Ask/Bid\toid\tproduct\tprice\tvolume" << std::endl;
 		for (size_t ii = 0; ii < orders.size(); ii++) {
-			if (orders.at(ii).ab == 'A') std::cout << "Ask\t";
+			if (orders.at(ii).ab == ASK) std::cout << "Ask\t";
 			else std::cout << "Bid\t";
 			std::cout << orders.at(ii).oid << "\t";
 			std::cout << orders.at(ii).p_code << "\t";

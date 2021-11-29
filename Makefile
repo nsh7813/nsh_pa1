@@ -8,7 +8,7 @@
 # * - Description : login system source file
 # * **************************************************************************************************/
 
-all: bin/hts_server bin/hts_client
+all: hts_server hts_client
 
 CC = g++
 CFLAGS = -std=c++11 -g
@@ -27,13 +27,13 @@ rm = rm -f
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cc
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(BINDIR)/hts_server:  $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o
+hts_server:  $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o
 	@$(LINKER) $(LFLAGS) $(OBJDIR)/server.o $(OBJDIR)/dept.o $(OBJDIR)/orderbook.o -o $@ -lpthread
 
-$(BINDIR)/hts_client: $(OBJDIR)/client.o $(OBJDIR)/dept.o
+hts_client: $(OBJDIR)/client.o $(OBJDIR)/dept.o
 	@$(LINKER) $(LFLAGS) $(OBJDIR)/client.o $(OBJDIR)/dept.o -o $@ -lpthread
 
 .PHONY: clean
 clean:
-	@$(rm) $(OBJDIR)/*.o $(BINDIR)/hts*
+	@$(rm) $(OBJDIR)/*.o hts_client hts_server
 

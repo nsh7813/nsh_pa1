@@ -39,18 +39,8 @@ class ORDERBOOK : public Dept{
 	int calcOrder(order raw_data);		// calculate client's order
 	int delOrder(int oid);			// delete order
 	void setLastPrice(int price);		// set last price
-//	void insertBook(int lv, LEVEL new_lv, char AB);	// insert Book
+	void insertBook(int lv, LEVEL new_lv, char AB);	// insert Book
+	void updateBook(int lv, LEVEL new_lv, char AB); // update Book
 };
 
-/*
-int ORDERBOOK::insertBook(int lv, LEVEL new_lv, char AB) {
-	addLastOID();
-	addNewLevel(lv, new_lv, AB);
-	if (AB == 'A') {
-		Abook.insert(Abook.begin() + lv, vector<int> (1, getLastOID()));
-	} else {
-		Bbook.insert(Bbook.begin() + lv, vector<int> (1, getLastOID()));
-	}
-}
-*/
 #endif

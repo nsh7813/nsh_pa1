@@ -191,12 +191,12 @@ void recv_dept(int p_code) {
 				lptr += 12;
 				lv.volume = atoi(lptr);
 				lptr += 12;
-				dept.UpdateDeptLevel(i, lv, 'A');
+				dept.UpdateDeptLevel(i, lv, ASK);
 				lv.price = atoi(lptr);
 				lptr += 12;
 				lv.volume = atoi(lptr);
 				lptr += 12;
-				dept.UpdateDeptLevel(i, lv, 'B');
+				dept.UpdateDeptLevel(i, lv, BID);
 			}
 			print5level(dept);
 		}
@@ -227,8 +227,9 @@ void getInfo() {
 		memset(buf, 0, sizeof(buf));
 		recv(sock, buf, 12*2, 0);
 		sscanf(buf, "%d%d", &p_code, &vol);
-		self.addProduct(p_code, vol);
+		self.modifyProduct(p_code, vol);
 	}
+	self.orderClear();
 	for (int i = 0; i < ordsize; i++) {
 		memset(buf, 0, sizeof(buf));
 		recv_len = recv(sock, buf, sizeof(order), 0);

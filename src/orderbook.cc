@@ -77,22 +77,16 @@ int ORDERBOOK::calcOrder(order raw_data) {
 				if (getLevelAll(AB).at(lv).price == 0) {
 					tlv.volume = raw_data.volume;
 					tlv.price = raw_data.price;
-					addLastOID();
-					Abook.at(lv).push_back(getLastOID());
-					UpdateDeptLevel(lv, tlv, AB);
+					updateBook(lv, tlv, AB);
 				}
 				else if (raw_data.price == getLevelAll(AB).at(lv).price) {
 					tlv = getLevel(lv, AB);
 					tlv.volume += raw_data.volume;
-					addLastOID();
-					Abook.at(lv).push_back(getLastOID());
-					UpdateDeptLevel(lv, tlv, AB);
+					updateBook(lv, tlv, AB);
 				} else if(raw_data.price < getLevelAll(AB).at(lv).price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
-					addLastOID();
-					addNewLevel(lv, tlv, AB);
-					Abook.insert(Abook.begin() + lv, vector<int> (1, getLastOID()));
+					insertBook(lv, tlv, AB);
 				} else continue;
 				raw_data.oid = getLastOID();
 				ordbook.insert({getLastOID(), raw_data});
@@ -113,9 +107,7 @@ int ORDERBOOK::calcOrder(order raw_data) {
 				if (raw_data.price > top.price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
-					addNewLevel(0, tlv, AB);
-					addLastOID();
-					Abook.insert(Abook.begin(), vector<int> (1, getLastOID()));
+					insertBook(0, tlv, AB);
 					raw_data.oid = getLastOID();
 					ordbook.insert({getLastOID(), raw_data});
 					autofixed = raw_data;
@@ -160,22 +152,16 @@ int ORDERBOOK::calcOrder(order raw_data) {
 				if (getLevelAll(AB).at(lv).price == 0) {
 					tlv.volume = raw_data.volume;
 					tlv.price = raw_data.price;
-					addLastOID();
-					Bbook.at(lv).push_back(getLastOID());
-					UpdateDeptLevel(lv, tlv, AB);	
+					updateBook(lv, tlv, AB);
 				}
 				else if (raw_data.price == getLevelAll(AB).at(lv).price) {
 					tlv = getLevel(lv, AB);
 					tlv.volume += raw_data.volume;
-					addLastOID();
-					Bbook[lv].push_back(getLastOID());
-					UpdateDeptLevel(lv, tlv, AB);
+					updateBook(lv, tlv, AB);
 				} else if(raw_data.price > getLevelAll(AB).at(lv).price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
-					addNewLevel(lv, tlv, AB);
-					addLastOID();
-					Bbook.insert(Bbook.begin() + lv, vector<int> (1, getLastOID()));
+					insertBook(lv, tlv, AB);
 				} else continue;
 				raw_data.oid = getLastOID();
 				ordbook.insert({getLastOID(), raw_data});
@@ -196,9 +182,7 @@ int ORDERBOOK::calcOrder(order raw_data) {
 				if (raw_data.price < top.price) {
 					tlv.price = raw_data.price;
 					tlv.volume = raw_data.volume;
-					addNewLevel(0, tlv, AB);
-					addLastOID();
-					Bbook.insert(Bbook.begin(), vector<int> (1, getLastOID()));
+					insertBook(0, tlv, AB);
 					raw_data.oid = getLastOID();
 					ordbook.insert({getLastOID(), raw_data});
 					autofixed = raw_data;
@@ -207,7 +191,7 @@ int ORDERBOOK::calcOrder(order raw_data) {
 				if (raw_data.volume >= top.volume) {
 					raw_data.volume -= top.volume;
 					traded += top.volume;
-					delLevel(0, 'B');
+					delLevel(0, 'A');
 					for (size_t i = 0; i < Abook[0].size(); i++) {
 						// trade success
 						ordQue.push(Abook[0][i]);
@@ -251,4 +235,25 @@ int ORDERBOOK::getLastPrice() {
 
 void ORDERBOOK::setLastPrice(int price) {
 	last_price = price;
+}
+
+
+void ORDERBOOK::insertBook(int lv, LEVEL new_lv, char AB) {
+	addLastOID();
+	addNewLevel(lv, new_lv, AB);
+	if (AB == ASK) {
+		Abook.insert(Abook.begin() + lv, vector<int> (1, getLastOID()));
+	} else {
+		Bbook.insert(Bbook.begin() + lv, vector<int> (1, getLastOID()));
+	}
+}
+
+void ORDERBOOK::updateBook(int lv, LEVEL new_lv, char AB) {
+	addLastOID();
+	if (AB == ASK) {
+		Abook[lv].push_back(getLastOID());
+	} else {
+		Bbook[lv].push_back(getLastOID());
+	}
+	UpdateDeptLevel(lv, new_lv, AB);	
 }
