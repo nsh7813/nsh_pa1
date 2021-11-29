@@ -1,3 +1,12 @@
+/* ***************************************************************************************************
+ * Copyright (c) 2021 Seung Hyeon Roh All Right Reserved
+ *
+ * - File Name : orderbook.cc
+ * - File Type : c++ source file
+ * - File Version(Last Update Date) : 1.4
+ * - Date : Nov. 29, 2021.
+ * - Description : orderbook system source file
+ * **************************************************************************************************/
 
 #include "orderbook.h"
 
@@ -5,31 +14,33 @@ queue<int> ordQue;
 order autofixed;
 int sum_balance;
 
-ORDER::ORDER() : Dept() {
+ORDERBOOK::ORDERBOOK() : Dept() {
 	last_oid = 0;
+	last_price = 0;
 	ordbook.clear();
 	Abook.clear();
 	Bbook.clear();
 }
 
-ORDER::~ORDER() {
+ORDERBOOK::~ORDERBOOK() {
 	ordbook.clear();
 	Abook.clear();
 	Bbook.clear();
 }
 
-ORDER::ORDER(int _initP, int _p_code) : Dept(_initP, _p_code) {
+ORDERBOOK::ORDERBOOK(int _initP, int _p_code) : Dept(_initP, _p_code) {
 	last_oid = 0;
+	last_price = _initP;
 	ordbook.clear();
 	Abook.resize(10);
 	Bbook.resize(10);
 }
 
-map<int, order> ORDER::getOrderbook() {
+map<int, order> ORDERBOOK::getOrdbook() {
 	return ordbook;
 }
 
-order ORDER::getOrderbyID(int oid) {
+order ORDERBOOK::getOrderbyID(int oid) {
 	order tmp = {};
 	if (ordbook.count(oid)) {
 		return ordbook[oid];
@@ -37,25 +48,26 @@ order ORDER::getOrderbyID(int oid) {
 	return tmp;
 }
 
-int ORDER::getLastOID() {
+int ORDERBOOK::getLastOID() {
 	return last_oid;
 }
 
-void ORDER::addLastOID() {
+void ORDERBOOK::addLastOID() {
 	last_oid++;
 	while(ordbook.count(last_oid)) {
 		last_oid++;
-		if(last_oid == 10000000) last_oid = 0;
+		if(last_oid == 10000000) last_oid = 1;
 	}
 }
 
-int ORDER::calcOrder(order raw_data, char AB) {
+int ORDERBOOK::calcOrder(order raw_data) {
 	size_t lv;
 	int traded = 0;
 	LEVEL top, tlv;
 	order tmp;
 	autofixed = {};
 	sum_balance = 0;
+	char AB = raw_data.ab;
 
 	if (!isPriceValid(raw_data.price)) return (-1);
 	if (AB == 'A') {		// Sell
@@ -228,7 +240,15 @@ int ORDER::calcOrder(order raw_data, char AB) {
 	return traded;
 }
 
-int ORDER::delOrder(int oid) {
+int ORDERBOOK::delOrder(int oid) {
 	ordbook.erase(oid);
 	return 0;	
+}
+
+int ORDERBOOK::getLastPrice() {
+	return last_price;
+}
+
+void ORDERBOOK::setLastPrice(int price) {
+	last_price = price;
 }

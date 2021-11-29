@@ -1,3 +1,13 @@
+/* ***************************************************************************************************
+ * Copyright (c) 2021 Seung Hyeon Roh All Right Reserved
+ *
+ * - File Name : client.cc
+ * - File Type : c++ source file
+ * - File Version(Last Update Date) : 1.4
+ * - Date : Nov. 29, 2021.
+ * - Description : cleint source file
+ * **************************************************************************************************/
+
 #include "client.h"
 #include <thread>
 
@@ -5,7 +15,6 @@ using namespace std;
 using std::thread;
 
 bool endf = false;
-int order_balance;
 int phase = 0;
 user self;
 Dept dept;
@@ -24,7 +33,9 @@ int main()
 	char buf[MAX_LEN + 1];
 	char id[20], pw[20];
 	char ASK_OR_BID;
+	order ord;
 	fd_set readset, copyset;
+	string usage;
 
 	sock=socket(AF_INET, SOCK_STREAM, 0);
         memset(&serv_addr, 0, sizeof(serv_addr));
@@ -48,6 +59,9 @@ int main()
 	udp_thread.detach();
 
 	self = user();
+	usage = "Usage! (int = command)\n1: login, enter ID PW\n2: exit\n3: order, enter product_code price volume A(ask) or B(bid)\n";
+	usage += "6: add new user, enter ID PW\n7: view user information\n0: print Usage\n";
+	cout << usage;	
 	while(!endf) {
 		copyset = readset;
 		if ((fd_num = select(fd_max + 1, &copyset, NULL, NULL, NULL)) < 0 ) {
@@ -58,6 +72,9 @@ int main()
 			memset(buf, 0, sizeof(buf));
 			cin >> opcode;
 			switch (opcode) {
+			case 0:
+				cout << usage;
+				break;
 			case LOGIN_USER:
 			case ADD_USER:
 				if (phase != 0) {
@@ -93,6 +110,12 @@ int main()
 				}
 				getInfo();
 				cin >> p_code >> price >> vol >> ASK_OR_BID;
+				ord.p_code = p_code; ord.price = price; ord.volume = vol;
+				ord.oid = 0; ord.uid = usr_code; ord.ab = ASK_OR_BID;
+				if (!self.canOrder(ord)) {
+					cout << "Error: invalid order!" << endl;
+					break;
+				}
 				memset(buf, 0, sizeof(buf));
 				sprintf(buf, "%d %d %d %d %c", opcode, p_code, price, vol, ASK_OR_BID);
 				send(sock, buf, strlen(buf), 0);
@@ -110,6 +133,13 @@ int main()
 				break;
 			case CANCEL_ORDER:
 			case FIX_ORDER:
+			case GET_INFO:
+				if (phase == 0) {
+					cout << "Error: invalid command!" << endl;
+					break;
+				}
+				getInfo();
+				self.printUserInfo();
 				break;
 			default:
 				endf = true;
@@ -118,21 +148,6 @@ int main()
 		} else if (FD_ISSET(sock, &copyset)){
 			memset(buf, 0, sizeof(buf));
 			ret = read(sock, buf, sizeof(buf));
-			if (ret > 0) {
-				opcode = atoi(buf);
-				switch (opcode) {
-				case LOGIN_SUCCESS:
-					break;
-				case CREATE_NEW:
-					break;
-				case ERROR_MSG:
-					cout << "Error: " << buf << endl;
-					break;
-				case GET_INFO:
-				default:
-					break;
-				}
-			} 
 		}
 	}
 	close(sock);
@@ -206,7 +221,6 @@ void getInfo() {
 	send(sock, "7", 1, 0);
 	if ((recv_len = recv(sock, buf, 12*3, 0)) > 0) {
 		sscanf(buf, "%d%d%d", &bal, &itemsize, &ordsize);
-		cout << buf << endl;
 	}
 	self.setBalance(bal);
 	for (int i = 0; i < itemsize; i++) {

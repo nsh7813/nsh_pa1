@@ -3,8 +3,8 @@
  *
  * - File Name : server.cc
  * - File Type : c++ source file
- * - File Version(Last Update Date) : 1.0
- * - Date : Nov. 14, 2021.
+ * - File Version(Last Update Date) : 1.4
+ * - Date : Nov. 29, 2021.
  * - Description : server source file
  * **************************************************************************************************/
 
@@ -47,7 +47,7 @@ vector<user> users;
 extern queue<int> ordQue;
 extern order autofixed;
 extern int sum_balance;
-ORDER ords;
+ORDERBOOK ords;
 
 
 int main() {
@@ -265,6 +265,10 @@ int handle_oper(char *buf, session_table table) {
 		sscanf(buf, "%d %s %s", &recv_opcode, id, pw);
 		uid = isUser(users, string(id), string(pw));
 		if (uid >= 0) {
+			if (users.at(uid).getConnection() != -1) {
+				ret = -1;
+				break;
+			}
 			users.at(uid).setConnection(table.sock);
 			ret = uid;
 			udp_cond.notify_one();
@@ -282,7 +286,8 @@ int handle_oper(char *buf, session_table table) {
 		ord.p_code = p_code;
 		ord.price = price;
 		ord.volume = vol;
-		ret = ords.calcOrder(ord, AB);
+		ord.ab = AB;
+		ret = ords.calcOrder(ord);
 		if (ret < 0) break;
 		else if (ret > 0) {			// have traded data
 			while(!ordQue.empty()) {	// full traded orders
@@ -332,7 +337,7 @@ int handle_oper(char *buf, session_table table) {
 		} 
 		// send dept
 		udp_cond.notify_one();
-		cout << "traded: " << ret << endl;
+		if (ret > 0) cout << "traded produdct: " << p_code << "\tvol: " << ret << endl;
 		break;
 	case CANCEL_ORDER:		// oid , return success or not 
 		break;
@@ -383,7 +388,7 @@ int handle_oper(char *buf, session_table table) {
 }
 
 void batch() {
-	ords = ORDER(100, 2222);
+	ords = ORDERBOOK(100, 2222);
 	users.clear();
 	string test = string("admin");
 	user new_user = user(test, test);
